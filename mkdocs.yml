@@ -35,6 +35,7 @@ nav:
   - Advanced:
     - Overview: Advanced/index.md
     - Technical Overview: Advanced/technical_overview.md
+    - MCTS Implementation Study: ELYSIA_MCTS.md
     - Tool Construction: Advanced/advanced_tool_construction.md
     - Custom Objects: Advanced/custom_objects.md
     - Environment: Advanced/environment.md
