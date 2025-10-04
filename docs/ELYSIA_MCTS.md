@@ -6,18 +6,111 @@ This document provides a comprehensive analysis of Elysia's Monte Carlo Tree Sea
 
 Elysia implements an MCTS-inspired decision tree system where agents navigate through a tree of possible actions to solve complex user queries. Unlike traditional MCTS which uses random simulation, Elysia uses structured LLM-based reasoning at each decision point, combined with sophisticated feedback mechanisms for continuous improvement.
 
+## MCTS Architecture Diagram
+
+The following diagram illustrates Elysia's MCTS implementation with integrated DSPy components and feedback mechanisms:
+
+```mermaid
+flowchart TB
+    Start([User Query]) --> Init[Tree Initialization]
+    
+    Init --> Selection[Selection Phase<br/>DecisionNode]
+    
+    Selection --> ChainOfThought[ElysiaChainOfThought<br/>dspy.Module]
+    ChainOfThought --> DecisionPrompt[DecisionPrompt<br/>dspy.Signature]
+    
+    DecisionPrompt --> Feedback{Feedback<br/>Available?}
+    
+    Feedback -->|Yes| RetrieveFeedback[retrieve_feedback<br/>Query Similar Examples]
+    RetrieveFeedback --> LabeledFewShot[dspy.LabeledFewShot<br/>Optimizer k=10]
+    LabeledFewShot --> OptimizedModule[Optimized Module<br/>with Few-Shot Examples]
+    OptimizedModule --> PredictDecision
+    
+    Feedback -->|No| PredictDecision[dspy.Prediction<br/>Generate Decision]
+    
+    PredictDecision --> AssertedModule[AssertedModule<br/>Quality Validation]
+    
+    AssertedModule --> Assertion{Assertion<br/>Passed?}
+    
+    Assertion -->|Failed| CopiedModule[CopiedModule<br/>Add Previous Feedback]
+    CopiedModule --> Counter{Max Tries<br/>Reached?}
+    Counter -->|No| ChainOfThought
+    Counter -->|Yes| FailedDecision[Return with Feedback]
+    
+    Assertion -->|Passed| Exploration[Exploration Phase<br/>Get Successive Actions]
+    
+    Exploration --> EvaluateTools[Evaluate Available Tools<br/>Filter & Group by Type]
+    
+    EvaluateTools --> ExecuteAction[Execute Selected Action]
+    
+    ExecuteAction --> ToolExecution[Tool Execution<br/>e.g., Query, Aggregate]
+    
+    ToolExecution --> SummaryModule{Summary<br/>Needed?}
+    
+    SummaryModule -->|Yes| AggregateResults[Aggregate Tool<br/>Summary Statistics]
+    SummaryModule -->|No| DirectResults[Direct Results]
+    
+    AggregateResults --> BackProp
+    DirectResults --> BackProp[Back Propagation<br/>Training Update]
+    
+    BackProp --> StoreTraining[(Store Training Data<br/>Weaviate DB)]
+    
+    StoreTraining --> CheckEnd{End Goal<br/>Achieved?}
+    
+    CheckEnd -->|No| Selection
+    CheckEnd -->|Yes| End([Return Results])
+    
+    FailedDecision --> End
+    
+    style ChainOfThought fill:#e1f5ff
+    style DecisionPrompt fill:#e1f5ff
+    style LabeledFewShot fill:#e1f5ff
+    style PredictDecision fill:#e1f5ff
+    style AssertedModule fill:#fff4e6
+    style CopiedModule fill:#fff4e6
+    style RetrieveFeedback fill:#f0f0f0
+    style AggregateResults fill:#e8f5e9
+    style StoreTraining fill:#fce4ec
+```
+
+### Diagram Components
+
+#### DSPy Framework Components (Blue)
+- **[`dspy.Module`](https://dspy.ai/api/modules/)**: Base class for all reasoning modules (ElysiaChainOfThought)
+- **[`dspy.Signature`](https://dspy.ai/api/signatures/)**: Defines input/output structure (DecisionPrompt)
+- **[`dspy.LabeledFewShot`](https://dspy.ai/api/optimizers/LabeledFewShot/)**: Optimizer that compiles modules with labeled examples
+- **[`dspy.Prediction`](https://dspy.ai/api/primitives/prediction/)**: Structured LLM output predictions
+
+#### Feedback & Quality Mechanisms (Orange)
+- **AssertedModule**: Validates decisions with custom assertion functions, implements retry logic
+- **CopiedModule**: Integrates historical feedback from failed attempts into prompts
+
+#### Filtering & Retrieval (Gray)
+- **retrieve_feedback**: Queries Weaviate database for similar past examples using vector similarity (threshold: 0.7)
+- Filters examples by relevance and retrieves top-k (n=10) for few-shot learning
+
+#### Summary & Aggregation (Green)
+- **Aggregate Tool**: Provides summary statistics (count, sum, average) on data collections
+- Applies filters and grouping for data summarization
+
+#### Training & Storage (Pink)
+- **TrainingUpdate**: Stores decision outcomes and tool results
+- **Weaviate DB**: Persistent storage for feedback examples and training data
+
+
+
 ## Core MCTS Components
 
 ### 1. Selection/Choice Mechanism
 
 **Primary Module**: `elysia.tree.util.DecisionNode`
-**Full Path**: `/elysia/tree/util.py` (lines 218-502)
+**Full Path**: [`/elysia/tree/util.py`](https://github.com/supmo668/elysia/blob/main/elysia/tree/util.py#L218-L502) (lines 218-502)
 
 The DecisionNode class implements the selection phase of MCTS, choosing the most promising action from available options.
 
 **Key Components**:
 - **Decision Making**: Uses DSPy-based `ElysiaChainOfThought` with `DecisionPrompt` signature
-- **Prompt Template**: `elysia.tree.prompt_templates.DecisionPrompt` (lines 5-130)
+- **Prompt Template**: `elysia.tree.prompt_templates.DecisionPrompt` ([`/elysia/tree/prompt_templates.py`](https://github.com/supmo668/elysia/blob/main/elysia/tree/prompt_templates.py#L5-L130) lines 5-130)
 - **Choice Logic**: `__call__` method evaluates available tools and makes decisions
 
 ```python
@@ -40,12 +133,12 @@ decision_executor = AssertedModule(
 ```
 
 **DSPy Module**: `ElysiaChainOfThought` extends `dspy.Module`
-**Full Path**: `/elysia/util/elysia_chain_of_thought.py` (lines 24-421)
+**Full Path**: [`/elysia/util/elysia_chain_of_thought.py`](https://github.com/supmo668/elysia/blob/main/elysia/util/elysia_chain_of_thought.py#L24-L421) (lines 24-421)
 
 ### 2. Exploration Factor
 
 **Primary Module**: `elysia.tree.tree.Tree._get_successive_actions()`
-**Full Path**: `/elysia/tree/tree.py` (method within Tree class)
+**Full Path**: [`/elysia/tree/tree.py`](https://github.com/supmo668/elysia/blob/main/elysia/tree/tree.py) (method within Tree class)
 
 The exploration mechanism evaluates future possible actions to inform current decisions.
 
@@ -73,7 +166,7 @@ successive_actions: str = dspy.InputField(
 ### 3. Evaluation Mechanism
 
 **Primary Module**: `elysia.tree.util.AssertedModule`
-**Full Path**: `/elysia/tree/util.py` (lines 153-215)
+**Full Path**: [`/elysia/tree/util.py`](https://github.com/supmo668/elysia/blob/main/elysia/tree/util.py#L153-L215) (lines 153-215)
 
 The evaluation phase ensures decisions meet quality criteria through assertion-based feedback loops.
 
@@ -108,7 +201,7 @@ class AssertedModule(dspy.Module):
 ### 4. Back Propagation/Feedback Mechanism
 
 **Primary Module**: `elysia.tree.util.CopiedModule`
-**Full Path**: `/elysia/tree/util.py` (lines 77-152)
+**Full Path**: [`/elysia/tree/util.py`](https://github.com/supmo668/elysia/blob/main/elysia/tree/util.py#L77-L152) (lines 77-152)
 
 The back propagation mechanism updates the system based on previous decisions and their outcomes.
 
@@ -131,7 +224,7 @@ results = [
 
 #### B. Feedback Retrieval
 **Module**: `elysia.util.retrieve_feedback.retrieve_feedback`
-**Full Path**: `/elysia/util/retrieve_feedback.py` (lines 8-92)
+**Full Path**: [`/elysia/util/retrieve_feedback.py`](https://github.com/supmo668/elysia/blob/main/elysia/util/retrieve_feedback.py#L8-L92) (lines 8-92)
 
 Retrieves similar examples from the feedback database for few-shot learning:
 
@@ -169,7 +262,7 @@ class CopiedModule(dspy.Module):
 
 #### D. Few-Shot Learning with DSPy
 **Module**: `elysia.util.elysia_chain_of_thought.ElysiaChainOfThought.aforward_with_feedback_examples`
-**Full Path**: `/elysia/util/elysia_chain_of_thought.py` (lines 345-421)
+**Full Path**: [`/elysia/util/elysia_chain_of_thought.py`](https://github.com/supmo668/elysia/blob/main/elysia/util/elysia_chain_of_thought.py#L345-L421) (lines 345-421)
 
 ```python
 async def aforward_with_feedback_examples(
@@ -206,7 +299,7 @@ async def aforward_with_feedback_examples(
 - Configures DSPy language models
 
 ### 2. Main Execution Loop
-**Location**: `elysia.tree.tree.Tree.async_run` (lines 1431-1550)
+**Location**: `elysia.tree.tree.Tree.async_run` ([`/elysia/tree/tree.py`](https://github.com/supmo668/elysia/blob/main/elysia/tree/tree.py#L1431-L1550) lines 1431-1550)
 
 ```python
 while True:
