@@ -177,3 +177,27 @@ elysia/api/user_configs/*
 # run
 rundocs.sh
 runpy.sh
+
+# brand configuration
+config/brand_config.yaml
+
+# Large files and binaries
+*.node
+*.so
+*.dylib
+*.dll
+*.exe
+*.bin
+
+# Node.js
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Large static files that shouldn't be in git
+elysia/api/static/
+elysia/api/static_*/
+frontend/out/
+frontend/.next/
