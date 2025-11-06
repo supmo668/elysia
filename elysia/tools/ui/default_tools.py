@@ -130,6 +130,10 @@ def load_default_tools_for_mode(
         mode = "one_branch"
 
     config = DEFAULT_TOOL_CONFIGS[mode]
+    
+    if logger:
+        logger.info(f"Loading default tools for mode: '{mode}'")
+        logger.info(f"Configuration: {len(config['branches'])} branches, {len(config.get('additional_tools', []))} additional tools")
 
     # Add branches and their tools
     for branch_config in config["branches"]:
@@ -141,6 +145,8 @@ def load_default_tools_for_mode(
                 instruction=branch_config["instruction"],
                 status=branch_config.get("status", ""),
             )
+            if logger:
+                logger.info(f"  ✓ Added root branch: '{branch_config['id']}'")
         else:
             tree.add_branch(
                 root=False,
@@ -150,25 +156,35 @@ def load_default_tools_for_mode(
                 description=branch_config.get("description", ""),
                 status=branch_config.get("status", ""),
             )
+            if logger:
+                logger.info(f"  ✓ Added branch: '{branch_config['id']}' (from '{branch_config.get('from_branch_id')}')")
 
         # Add tools to the branch
         for tool_config in branch_config["tools"]:
             tool_class = tool_config["class"]
             kwargs = tool_config.get("kwargs", {})
             tree.add_tool(branch_id=branch_config["id"], tool=tool_class, **kwargs)
+            if logger:
+                logger.info(f"    → Tool: {tool_class.__name__} (branch: {branch_config['id']})")
 
     # Add additional tools (tools that depend on other tools)
+    if logger:
+        logger.info(f"Adding {len(config.get('additional_tools', []))} additional tools...")
     for tool_config in config.get("additional_tools", []):
         tree.add_tool(
             tool=tool_config["class"],
             branch_id=tool_config.get("branch_id"),
             from_tool_ids=tool_config.get("from_tool_ids", [])
         )
+        if logger:
+            logger.info(f"  ✓ Additional tool: {tool_config['class'].__name__} (branch: {tool_config.get('branch_id')}, depends on: {tool_config.get('from_tool_ids', [])})")
 
     # Auto-discover and add MCP tools to the root branch
+    if logger:
+        logger.info("Auto-discovering MCP tools...")
     try:
         from elysia.util.tool_discovery import discover_tools_from_module
-
+        
         all_tools = discover_tools_from_module()
         mcp_tools = {
             name: cls for name, cls in all_tools.items()
@@ -177,17 +193,22 @@ def load_default_tools_for_mode(
 
         if mcp_tools:
             base_branch_id = config["branches"][0]["id"]  # Add to root branch
+            if logger:
+                logger.info(f"Found {len(mcp_tools)} MCP tools to load")
             for tool_name, tool_class in mcp_tools.items():
                 try:
                     tree.add_tool(branch_id=base_branch_id, tool=tool_class)
                     if logger:
-                        logger.info(f"Auto-loaded MCP tool {tool_name} to branch '{base_branch_id}'")
+                        logger.info(f"  ✓ MCP tool: {tool_name} → branch '{base_branch_id}'")
                 except Exception as e:
                     if logger:
-                        logger.warning(f"Failed to auto-load MCP tool {tool_name}: {e}")
+                        logger.warning(f"  ✗ Failed to load MCP tool {tool_name}: {e}")
+        else:
+            if logger:
+                logger.info("No MCP tools found to auto-load")
     except Exception as e:
         if logger:
-            logger.debug(f"Could not auto-load MCP tools: {e}")
+            logger.warning(f"Could not auto-discover MCP tools: {e}")
 
     # Add any extra tool classes provided (e.g., custom tools passed in)
     if additional_tool_classes:

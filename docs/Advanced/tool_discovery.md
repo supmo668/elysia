@@ -47,6 +47,60 @@ Main function that loads tools based on mode:
 
 **Circular Import Handling:** Direct imports from tool modules, `TYPE_CHECKING` for Tree
 
+#### Default Tools Flow Diagram
+
+The following diagram illustrates the complete tool loading flow during tree initialization:
+
+```mermaid
+flowchart TD
+    Start([Tree Initialization]) --> LoadMode{Select Mode}
+    
+    LoadMode -->|multi_branch| MultiBranch[Multi-Branch Config]
+    LoadMode -->|one_branch| OneBranch[One-Branch Config]
+    LoadMode -->|empty| Empty[Empty Config]
+    LoadMode -->|default or ''| OneBranch
+    
+    MultiBranch --> CreateBranches1[Create Branches:<br/>1. base root<br/>2. search from base]
+    OneBranch --> CreateBranches2[Create Branches:<br/>1. base root only]
+    Empty --> CreateBranches3[Create Branches:<br/>1. base root empty]
+    
+    CreateBranches1 --> AddBaseTools1[Add to 'base' branch:<br/>• CitedSummarizer<br/>• FakeTextResponse<br/>• Visualise]
+    CreateBranches2 --> AddBaseTools2[Add to 'base' branch:<br/>• CitedSummarizer<br/>• FakeTextResponse<br/>• Aggregate<br/>• Query<br/>• Visualise]
+    CreateBranches3 --> DiscoverMCP1
+    
+    AddBaseTools1 --> AddSearchTools[Add to 'search' branch:<br/>• Query with summariser<br/>• Aggregate]
+    AddBaseTools2 --> AddAdditional2[Add Additional:<br/>• SummariseItems<br/>  depends on query]
+    
+    AddSearchTools --> AddAdditional1[Add Additional:<br/>• SummariseItems<br/>  depends on query]
+    
+    AddAdditional1 --> DiscoverMCP1[Auto-discover MCP Tools]
+    AddAdditional2 --> DiscoverMCP1
+    
+    DiscoverMCP1 --> ImportMCP[Import mcp_loader module]
+    ImportMCP --> LoadConfig[Load mcp.json from repo root]
+    LoadConfig --> CheckMode{MCP_AS_AGENT env?}
+    
+    CheckMode -->|True Agent Mode| CreateAgent[Create 1 MCPTool per server<br/>e.g. MCP_graphiti_memory]
+    CheckMode -->|False Individual Mode| CreateIndividual[Create Tool per MCP tool<br/>e.g. MCP_graphiti_memory_add_memory]
+    
+    CreateAgent --> AddToBase1[Add MCP tools to 'base' branch]
+    CreateIndividual --> AddToBase1
+    
+    AddToBase1 --> CheckCustom{Additional<br/>tool_classes?}
+    CheckCustom -->|Yes| AddCustom[Add custom tools to base branch]
+    CheckCustom -->|No| Complete
+    AddCustom --> Complete([Tree Ready])
+    
+    style Start fill:#e1f5ff
+    style Complete fill:#c8e6c9
+    style DiscoverMCP1 fill:#fff9c4
+    style CreateAgent fill:#ffe0b2
+    style CreateIndividual fill:#ffe0b2
+    style LoadConfig fill:#fff9c4
+```
+
+*Source: [docs/diagram/default_tools_flow.mmd](../diagram/default_tools_flow.mmd)*
+
 ### 3. Tree Class Integration (`elysia/tree/tree.py`)
 
 **Simplified Methods:**

@@ -26,6 +26,7 @@ except Exception:
     spacy.cli.download("en_core_web_sm")  # type: ignore
     nlp = spacy.load("en_core_web_sm")
 
+mcp_config_path = os.getenv("MCP_CONFIG_PATH", "mcp.json")
 
 api_key_to_provider = {
     "openai_api_key": ["openai"],

@@ -3,56 +3,81 @@ discovered_tools:
     Query:
       class_name: Query
       name: query
-      description: Query the knowledge base via semantic/keyword search
-      end: false
+      description: "\n            Retrieves and displays specific data entries from the collections.\n            Then, query\
+        \ with semantic search, keyword search, or a combination of both.\n            Queries can be filtered, sorted, and\
+        \ more.\n            Retrieving and displaying specific data entries rather than performing calculations or summaries.\n\
+        \            Do not use 'query' as a preliminary filtering step when 'aggregate' can achieve the same result more\
+        \ efficiently (if 'aggregate' is available).\n            "
+      end: null
       available: true
     Aggregate:
       class_name: Aggregate
       name: aggregate
-      description: Aggregate information by performing operations on the knowledge base
-      end: false
+      description: "\n            Query the knowledge base specifically for aggregation queries.\n            Performs calculations\
+        \ (counting, averaging, summing, etc.) and provides summary statistics on data.\n            It can group data by\
+        \ properties and apply filters directly, without needing a prior query.\n            Aggregation queries can be filtered.\n\
+        \            This can be applied directly on any collections in the schema.\n            Use this tool when you need\
+        \ counts, sums, averages, or other summary statistics on properties in the collections.\n            'aggregate' should\
+        \ be considered the first choice for tasks involving counting, summing, averaging, \n            or other statistical\
+        \ operations, even when filtering is required.\n            "
+      end: null
       available: true
   text:
     CitedSummarizer:
       class_name: CitedSummarizer
-      name: cited_summarizer
-      description: Summarize information with citations
+      name: cited_summarize
+      description: "\n            Summarize retrieved information for the user when all relevant data has been gathered.\n\
+        \            Provides a text response, and may end the conversation, but unlike text_response tool, can be used mid-conversation.\n\
+        \            Avoid for general questions where text_response is available.\n            Summarisation text is directly\
+        \ displayed to the user.\n            Most of the time, you can choose end_actions to be True to end the conversation\
+        \ with a summary.\n            This is a good way to end the conversation.\n            "
       end: true
       available: true
     FakeTextResponse:
       class_name: FakeTextResponse
       name: text_response
-      description: Generate a text response to the user
+      description: "\n            End the conversation. This should be used when the user has finished their query, or you\
+        \ have nothing more to do except reply.\n            You should use this to answer conversational questions not related\
+        \ to other tools. But do not use this as a source of information.\n            All information should be from the\
+        \ environment if answering a complex question or an explanation.\n            If there is an error and you could not\
+        \ complete a task, use this tool to suggest a brief reason why.\n            If, for example, there is a missing API\
+        \ key, then the user needs to add it to the settings (which you should inform them of).\n            Or you cannot\
+        \ connect to weaviate, then the user needs to input their API keys in the settings.\n            If there are no collections\
+        \ available, the user needs to analyze this in the 'data' tab.\n            If there are other problems, and it looks\
+        \ like the user can fix it, then provide a suggestion.\n            "
       end: true
       available: true
   visualization:
     BasicLinearRegression:
       class_name: BasicLinearRegression
-      name: basic_linear_regression
-      description: Perform basic linear regression analysis
-      end: false
-      available: true
-    Visualise:
-      class_name: Visualise
-      name: visualise
-      description: Create visualizations of data
-      end: false
-      available: true
-  postprocessing:
-    SummariseItems:
-      class_name: SummariseItems
-      name: summarise_items
-      description: Summarise retrieved items from query results
+      name: basic_linear_regression_tool
+      description: "\n            Use this tool to perform linear regression between two numeric variables in the environment.\n\
+        \            This also returns a visualisation of the data.\n            "
       end: false
       available: true
   mcp:
-    # MCP tools will be dynamically added here when mcp.json is configured
-    # Example:
-    # MCP_example_server:
-    #   class_name: MCP_example_server
-    #   name: mcp_example_server
-    #   description: MCP server 'example_server' - provides access to multiple tools
-    #   end: false
-    #   available: true
-  other: {}
-
+    MCP_graphiti_memory:
+      class_name: MCP_graphiti_memory
+      name: null
+      description: null
+      end: false
+      available: true
+    MCPTool:
+      class_name: MCPTool
+      name: null
+      description: null
+      end: false
+      available: true
+  other:
+    TellAJoke:
+      class_name: TellAJoke
+      name: tell_a_joke
+      description: Displays a joke to the user.
+      end: true
+      available: true
+    tool_class:
+      class_name: tool_class
+      name: null
+      description: null
+      end: false
+      available: true

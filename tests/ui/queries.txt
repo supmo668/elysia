@@ -1,0 +1,4 @@
+1. Test Graphiti MCP Tool query
+As I mention this important information, call on Graphiti Memory to add this to memory. the relationship of Formulation is as follows: "lots" are composed of "ingredients", "Batches" composed of "lots" "product formulations" are composed of multiple "batches"
+
+say "I Understand" as response
