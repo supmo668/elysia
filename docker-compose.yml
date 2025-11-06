@@ -35,12 +35,12 @@ services:
     container_name: elysia-app
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${ELYSIA_PORT:-8000}:${ELYSIA_PORT:-8000}"
     environment:
       # Weaviate Configuration (local Docker instance)
-      WCD_URL: http://weaviate:8080
+      WCD_URL: ${WCD_URL:-http://weaviate:8080}
       WCD_API_KEY: ${WCD_API_KEY:-}
-      WEAVIATE_IS_LOCAL: 'true'
+      WEAVIATE_IS_LOCAL: '${WEAVIATE_IS_LOCAL:-true}'
       
       # LLM API Keys (from .env file)
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -55,20 +55,22 @@ services:
       
       # Server Configuration
       HOST: 0.0.0.0
-      PORT: 8000
+      PORT: ${ELYSIA_PORT:-8000}
+    env_file:
+      - .env
+
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
       - ./elysia/api/static_custom:/app/elysia/api/static_custom
       - ./elysia/api/user_configs:/app/elysia/api/user_configs
-      - ./.env:/app/.env:ro
     depends_on:
       weaviate:
         condition: service_healthy
     networks:
       - elysia-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${ELYSIA_PORT:-8000}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

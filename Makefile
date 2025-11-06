@@ -124,6 +124,11 @@ rebuild: ## Rebuild and restart the application
 	@$(DOCKER_COMPOSE) up -d $(APP_CONTAINER)
 	@echo "$(GREEN)✓ Application rebuilt and restarted!$(NC)"
 
+build-frontend: ## Build frontend and export to static_custom
+	@echo "$(BLUE)Building frontend...$(NC)"
+	@cd frontend && npm install && npm run build
+	@echo "$(GREEN)✓ Frontend built and exported to elysia/api/static_custom/$(NC)"
+
 ##@ Ollama Management
 
 ollama-pull: ## Pull a model for Ollama (usage: make ollama-pull MODEL=llama2)
