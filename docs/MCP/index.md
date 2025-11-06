@@ -5,6 +5,7 @@ Complete documentation for integrating MCP servers with Elysia.
 ## Quick Links
 
 - **[MCP_AS_AGENT Configuration](mcp_as_agent.md)** - ⭐ **NEW**: Control MCP behavior (Agent vs Individual mode)
+- **[Health Checks](health_checks.md)** - ⭐ **NEW**: Automatic MCP server health validation
 - **[Overview](overview.md)** - High-level summary of MCP integration
 - **[Quickstart](quickstart.md)** - 30-second setup guide
 - **[Interaction Model](interaction_model.md)** - How MCPTool works and parameter surfacing
@@ -72,6 +73,7 @@ See [Interaction Model](interaction_model.md) for detailed explanation.
 ## Key Features
 
 ✅ **Automatic Discovery**: MCP tools are automatically discovered and registered  
+✅ **Health Checks**: Servers validated before initialization (NEW)  
 ✅ **API Integration**: Full integration with Elysia's UserManager and TreeManager  
 ✅ **Configuration-Based**: Enable/disable servers via `mcp.json`  
 ✅ **Production Ready**: Error handling, logging, type safety  

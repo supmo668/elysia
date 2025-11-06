@@ -247,20 +247,6 @@ class Tree:
 
         self.branch_initialisation = initialisation
         
-        # Auto-load additional tools (e.g., MCP tools) after base initialization
-        self._load_additional_discovered_tools()
-    
-    def _load_additional_discovered_tools(self) -> None:
-        """
-        Load additional tools that have been discovered (e.g., MCP tools).
-        This runs after base initialization to add any dynamically discovered tools.
-
-        Note: This method is now deprecated as MCP tools are auto-loaded in
-        load_default_tools_for_mode. Kept for backwards compatibility.
-        """
-        # MCP tools are now auto-loaded in load_default_tools_for_mode
-        # This method is kept for backwards compatibility and custom tool discovery
-        pass
 
     def smart_setup(self) -> None:
         """

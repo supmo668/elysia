@@ -106,6 +106,9 @@ class MCPHealthChecker:
         Returns:
             True if endpoint responds successfully, False otherwise
         """
+        if not AIOHTTP_AVAILABLE:
+            return True
+        
         try:
             endpoint = urljoin(base_url, path)
             

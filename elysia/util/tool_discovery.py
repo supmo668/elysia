@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 logger = getLogger(__name__)
 
+GENERATE_TOOL_YAML=True  # Set to True to auto-generate YAML on import
 
 def discover_tools_from_module() -> Dict[str, Type]:
     """
@@ -124,7 +125,10 @@ def generate_tool_discovery_yaml(output_path: str | Path | None = None) -> str:
     
     for tool_name, tool_meta in metadata.items():
         # Determine category based on tool name or metadata
-        if any(kw in tool_name.lower() for kw in ["query", "aggregate", "search", "retrieve"]):
+        # Check MCP first to avoid mis-categorization
+        if "mcp" in tool_name.lower() or tool_name.startswith("MCP_"):
+            category = "mcp"
+        elif any(kw in tool_name.lower() for kw in ["query", "aggregate", "search", "retrieve"]):
             category = "retrieval"
         elif any(kw in tool_name.lower() for kw in ["text", "summarize", "summarise", "cite"]):
             category = "text"
@@ -132,8 +136,6 @@ def generate_tool_discovery_yaml(output_path: str | Path | None = None) -> str:
             category = "visualization"
         elif any(kw in tool_name.lower() for kw in ["summarise_items", "postprocess"]):
             category = "postprocessing"
-        elif "mcp" in tool_name.lower():
-            category = "mcp"
         else:
             category = "other"
         
@@ -187,3 +189,7 @@ def get_tools_by_category(category: str) -> Dict[str, Type]:
     
     return category_tools
 
+# Note: Auto-generation disabled to prevent circular imports at module load time
+# Run scripts/generate_discovered_tools.py to manually generate the YAML
+# if GENERATE_TOOL_YAML:
+#     generate_tool_discovery_yaml()

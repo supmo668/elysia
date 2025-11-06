@@ -8,6 +8,7 @@ Operating Modes (controlled by MCP_AS_AGENT env var):
 """
 import json
 import os
+import asyncio
 from pathlib import Path
 from logging import getLogger
 from typing import Any, AsyncGenerator
@@ -16,6 +17,7 @@ from elysia.tools.mcp.mcp_tool import MCPTool
 from elysia.objects import Tool, Status, Error, Text, Result
 from elysia.tree.objects import TreeData
 from elysia.util.client import ClientManager
+from elysia.deps.mcp_health import get_health_checker
 import dspy
 
 logger = getLogger(__name__)
@@ -23,7 +25,7 @@ logger = getLogger(__name__)
 
 def load_mcp_servers_from_config() -> list[type[MCPTool]] | list[type[Tool]]:
     """
-    Load MCP servers from mcp.json at module root (elysia/mcp.json).
+    Load MCP servers from mcp.json at repository root.
     
     Behavior depends on MCP_AS_AGENT environment variable:
     - True: Each enabled server becomes one MCPTool (agent gateway) class
@@ -33,10 +35,12 @@ def load_mcp_servers_from_config() -> list[type[MCPTool]] | list[type[Tool]]:
     - stdio: Runs a local MCP server script
     - sse: Connects to a remote MCP server via Server-Sent Events
     """
-    config_path = Path(__file__).parent.parent.parent / "mcp.json"
+    # Look for mcp.json at repository root (4 levels up from this file)
+    # Path: elysia/tools/mcp/mcp_loader.py -> repo_root
+    config_path = Path(__file__).parent.parent.parent.parent / "mcp.json"
     
     if not config_path.exists():
-        logger.info("No mcp.json found at module root, skipping MCP server loading")
+        logger.info(f"No mcp.json found at {config_path}, skipping MCP server loading")
         return []
     
     # Check agent mode from environment
@@ -46,16 +50,48 @@ def load_mcp_servers_from_config() -> list[type[MCPTool]] | list[type[Tool]]:
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        tool_classes = []
         servers = config.get("servers", [])
+        
+        # Filter enabled servers
+        enabled_servers = [s for s in servers if s.get("enabled", False)]
+        
+        if not enabled_servers:
+            logger.info("No enabled MCP servers found in mcp.json")
+            return []
+        
+        # Perform health checks on all enabled servers
+        logger.info(f"Performing health checks on {len(enabled_servers)} MCP server(s)...")
+        health_checker = get_health_checker()
+        
+        # Run health checks synchronously (we're at module import time)
+        loop = asyncio.new_event_loop()
+        try:
+            health_status = loop.run_until_complete(
+                health_checker.check_multiple(enabled_servers)
+            )
+        finally:
+            loop.close()
+        
+        # Filter servers based on health status
+        healthy_servers = []
+        for server in enabled_servers:
+            server_name = server.get("name", "unknown")
+            if health_status.get(server_name, False):
+                logger.info(f"✓ MCP server '{server_name}' is healthy")
+                healthy_servers.append(server)
+            else:
+                logger.warning(f"✗ MCP server '{server_name}' is not responding - skipping")
+        
+        if not healthy_servers:
+            logger.warning("No healthy MCP servers found, skipping tool creation")
+            return []
+        
+        tool_classes = []
         
         if agent_mode:
             # Agent mode: Create one MCPTool per server
             logger.info("MCP_AS_AGENT=True: Creating agent gateway tools")
-            for server_config in servers:
-                if not server_config.get("enabled", False):
-                    continue
-                
+            for server_config in healthy_servers:
                 server_name = server_config.get("name", "unknown")
                 server_description = server_config.get("description", "")
                 url = server_config.get("url")
@@ -79,10 +115,7 @@ def load_mcp_servers_from_config() -> list[type[MCPTool]] | list[type[Tool]]:
         else:
             # Individual mode: Create separate Tool for each MCP server tool
             logger.info("MCP_AS_AGENT=False: Creating individual tool wrappers")
-            for server_config in servers:
-                if not server_config.get("enabled", False):
-                    continue
-                
+            for server_config in healthy_servers:
                 server_name = server_config.get("name", "unknown")
                 server_description = server_config.get("description", "")
                 url = server_config.get("url")
@@ -298,11 +331,11 @@ def _create_individual_tool_class(
             **kwargs,
         ) -> AsyncGenerator[Result | Status | Error | Text, None]:
             """Execute the specific MCP tool."""
-            yield Status(f\"Executing {_tool_name} on MCP server {_server_name}...\")
+            yield Status(f"Executing {_tool_name} on MCP server {_server_name}...")
             
             # Ensure connection
             if not await self._ensure_connection():
-                yield Error(error_message=f\"Failed to connect to MCP server {_server_name}\")
+                yield Error(error_message=f"Failed to connect to MCP server {_server_name}")
                 return
             
             try:
@@ -326,7 +359,7 @@ def _create_individual_tool_class(
                     yield Result([{"result": str(result)}], name=_tool_name)
                     
             except Exception as e:
-                error_msg = f\"Error executing {_tool_name}: {str(e)}\"
+                error_msg = f"Error executing {_tool_name}: {str(e)}"
                 logger.error(error_msg)
                 yield Error(error_message=error_msg)
         
@@ -347,7 +380,7 @@ def _create_individual_tool_class(
     return IndividualMCPToolWrapper
 
 
-# Load servers at module import time
+# Load servers at module import time [IMPORTANT]
 _loaded_tool_classes = load_mcp_servers_from_config()
 
 # Export to module namespace for discovery

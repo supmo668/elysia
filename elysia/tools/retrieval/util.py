@@ -6,6 +6,7 @@ from typing import get_args, get_origin
 
 from dateutil import parser
 from pydantic import BaseModel, Field, field_validator
+import weaviate
 from weaviate.collections import CollectionAsync
 from weaviate.classes.query import Filter, Metrics, QueryReference, Sort
 from weaviate.classes.aggregate import GroupByAggregate

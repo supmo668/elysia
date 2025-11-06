@@ -16,7 +16,8 @@ import dspy
 
 from elysia.objects import Tool, Status, Error, Text, Result
 from elysia.tree.objects import TreeData
-from elysia.util.client import ClientManagerif TYPE_CHECKING:
+from elysia.util.client import ClientManager
+if TYPE_CHECKING:
     from elysia.tree.tree import Tree
 
 logger = getLogger(__name__)
@@ -71,9 +72,9 @@ class MCPTool(Tool):
             description = server_description
         else:
             if self.agent_mode:
-                description = f"MCP server '{server_name}' ({transport_type}) - AI agent with access to multiple tools. Accepts natural language queries."
+                description = f"MCP server '{server_name}' - AI agent with access to multiple tools. Accepts natural language queries."
             else:
-                description = f"MCP server '{server_name}' ({transport_type}) - provides access to multiple tools via Model Context Protocol"
+                description = f"MCP server '{server_name}' - provides access to multiple tools via Model Context Protocol"
 
         # Define inputs based on mode
         if self.agent_mode:
@@ -121,13 +122,13 @@ class MCPTool(Tool):
             return True
 
         try:
-            if self.logger:
-                self.logger.info(f"Connecting to MCP server: {self.server_name} at {self.url}")
-
             from langchain_mcp_adapters.tools import load_mcp_tools
             from mcp import ClientSession
             from mcp.client.sse import sse_client
             
+            if self.logger:
+                self.logger.info(f"Connecting to MCP server: {self.server_name} at {self.url}")
+
             async with sse_client(self.url, headers=self.headers) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
@@ -149,23 +150,23 @@ class MCPTool(Tool):
                     prompt = PromptTemplate.from_template(
                         """Answer the following question as best you can. You have access to the following tools:
 
-{tools}
+                        {tools}
 
-Use the following format:
+                        Use the following format:
 
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
+                        Question: the input question you must answer
+                        Thought: you should always think about what to do
+                        Action: the action to take, should be one of [{tool_names}]
+                        Action Input: the input to the action
+                        Observation: the result of the action
+                        ... (this Thought/Action/Action Input/Observation can repeat N times)
+                        Thought: I now know the final answer
+                        Final Answer: the final answer to the original input question
 
-Begin!
+                        Begin!
 
-Question: {input}
-Thought:{agent_scratchpad}"""
+                        Question: {input}
+                        Thought:{agent_scratchpad}"""
                     )
                     
                     agent = create_react_agent(llm, self._langchain_tools, prompt)

@@ -16,6 +16,7 @@ classifiers = [
 ]
 keywords=["ai", "agentic", "weaviate", "retrieval", "search", "llm"]
 dependencies = [
+    "aiohttp>=3.10.0",
     "apscheduler==3.11.0",
     "bcrypt>=4.3.0",
     "dspy-ai>=3.0.0",
